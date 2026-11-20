@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 # CareBridge — Autonomous AI Care Coordinator
 
 > **Future Health Digital Innovation Challenge**  
@@ -127,3 +128,6 @@ docker compose -f infrastructure/docker/docker-compose.yml up --build
 =======
 # Carebridge
 >>>>>>> 229ead3ac44ad7ddc2ce0bc68ed9ccbdad8680a2
+=======
+# CareBridge-AI
+>>>>>>> 40d1512645d5a60bcee20c954c2443b75a17ae70
