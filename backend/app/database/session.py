@@ -62,11 +62,17 @@ import os
 from pathlib import Path
 
 # Configure Async and Sync Database URLs
-db_file = Path("C:/CareBridge/backend/carebridge.db").resolve()
-raw_db_url = settings.DATABASE_URL or f"sqlite+aiosqlite:///{db_file.as_posix()}"
+_backend_root = Path(__file__).resolve().parents[2]
+db_file = (_backend_root / "carebridge.db").resolve()
+raw_db_url = (settings.DATABASE_URL or f"sqlite+aiosqlite:///{db_file.as_posix()}").strip()
 
-# Normalize postgresql:// and sqlite:// for SQLAlchemy async engine
-if raw_db_url.startswith("postgresql://"):
+# Normalize postgres://, postgresql://, and sqlite:// for SQLAlchemy async engine
+if raw_db_url.startswith("postgres://"):
+    raw_db_url = raw_db_url.replace("postgres://", "postgresql://", 1)
+
+if raw_db_url.startswith("postgresql+psycopg://"):
+    ASYNC_DB_URL = raw_db_url.replace("postgresql+psycopg://", "postgresql+asyncpg://", 1)
+elif raw_db_url.startswith("postgresql://"):
     ASYNC_DB_URL = raw_db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
 elif raw_db_url.startswith("sqlite://") and "+aiosqlite" not in raw_db_url:
     ASYNC_DB_URL = raw_db_url.replace("sqlite://", "sqlite+aiosqlite://", 1)
@@ -77,19 +83,26 @@ else:
 if "postgres" in ASYNC_DB_URL and (os.getenv("TESTING") == "1" and not os.getenv("FORCE_POSTGRES")):
     ASYNC_DB_URL = f"sqlite+aiosqlite:///{db_file.as_posix()}"
 
-SYNC_DB_URL = ASYNC_DB_URL.replace("+asyncpg", "").replace("+aiosqlite", "")
+# Use psycopg (v3) driver for synchronous PostgreSQL connections (supports Cloud SQL Unix sockets)
+if ASYNC_DB_URL.startswith("postgresql+asyncpg://"):
+    SYNC_DB_URL = ASYNC_DB_URL.replace("postgresql+asyncpg://", "postgresql+psycopg://", 1)
+elif ASYNC_DB_URL.startswith("postgresql://"):
+    SYNC_DB_URL = ASYNC_DB_URL.replace("postgresql://", "postgresql+psycopg://", 1)
+else:
+    SYNC_DB_URL = ASYNC_DB_URL.replace("+aiosqlite", "")
 
 # Create engines with connection pooling
 connect_args = {"check_same_thread": False} if "sqlite" in SYNC_DB_URL else {}
 async_connect_args = {"check_same_thread": False} if "sqlite" in ASYNC_DB_URL else {}
 
-# Pool configuration for high-concurrency healthcare endpoints
+# Pool configuration (configurable via DB_POOL_SIZE / DB_MAX_OVERFLOW for Cloud SQL tiers)
 pool_kwargs = {}
 if "postgres" in ASYNC_DB_URL:
     pool_kwargs = {
-        "pool_size": 30,
-        "max_overflow": 50,
-        "pool_timeout": 60,
+        "pool_size": settings.DB_POOL_SIZE,
+        "max_overflow": settings.DB_MAX_OVERFLOW,
+        "pool_timeout": settings.DB_POOL_TIMEOUT,
+        "pool_recycle": 1800,
     }
 
 async_engine = create_async_engine(
@@ -111,9 +124,10 @@ async_session_factory = async_sessionmaker(
 sync_pool_kwargs = {}
 if "postgres" in SYNC_DB_URL:
     sync_pool_kwargs = {
-        "pool_size": 30,
-        "max_overflow": 50,
-        "pool_timeout": 60,
+        "pool_size": settings.DB_POOL_SIZE,
+        "max_overflow": settings.DB_MAX_OVERFLOW,
+        "pool_timeout": settings.DB_POOL_TIMEOUT,
+        "pool_recycle": 1800,
     }
 
 sync_engine = create_engine(

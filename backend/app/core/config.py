@@ -3,6 +3,7 @@ CareBridge Configuration Module
 Loads application configuration via Pydantic Settings from environment variables or .env file.
 """
 
+import json
 import os
 from typing import List, Union
 from pydantic import field_validator
@@ -32,15 +33,29 @@ class Settings(BaseSettings):
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def assemble_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
-        if isinstance(v, str) and not v.startswith("["):
-            return [i.strip() for i in v.split(",")]
-        elif isinstance(v, list):
-            return v
+        if isinstance(v, list):
+            return [str(i).strip() for i in v if str(i).strip()]
+        if isinstance(v, str):
+            raw = v.strip()
+            if not raw:
+                return []
+            if raw.startswith("["):
+                try:
+                    parsed = json.loads(raw)
+                    if isinstance(parsed, list):
+                        return [str(i).strip() for i in parsed if str(i).strip()]
+                except json.JSONDecodeError:
+                    pass
+            return [i.strip() for i in raw.split(",") if i.strip()]
         return ["*"]
 
-    # Database & Supabase settings
+    # Database & Supabase / Cloud SQL settings
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/carebridge"
     CHECKPOINTER_DB_URI: str = "postgresql://postgres:postgres@localhost:5432/carebridge"
+    DB_POOL_SIZE: int = 10
+    DB_MAX_OVERFLOW: int = 10
+    DB_POOL_TIMEOUT: int = 30
+    UPLOAD_STORAGE_DIR: str = ""
 
     # LLM Settings (Gemini Primary, GroqCloud & OpenAI Fallback)
     LLM_PROVIDER: str = "gemini" # "gemini", "groq", "openai", "mock"
@@ -82,7 +97,15 @@ class Settings(BaseSettings):
     def get_sanitized_config(self) -> dict:
         """Returns configuration with sensitive secrets masked for safe logging and audits."""
         raw = self.model_dump()
-        for secret_field in ("SECRET_KEY", "GROQ_API_KEY", "OPENAI_API_KEY", "DATABASE_URL", "CHECKPOINTER_DB_URI"):
+        for secret_field in (
+            "SECRET_KEY",
+            "GEMINI_API_KEY",
+            "GROQ_API_KEY",
+            "OPENAI_API_KEY",
+            "LANGCHAIN_API_KEY",
+            "DATABASE_URL",
+            "CHECKPOINTER_DB_URI",
+        ):
             if secret_field in raw and raw[secret_field]:
                 val = str(raw[secret_field])
                 if len(val) > 8:

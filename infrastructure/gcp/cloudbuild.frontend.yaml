@@ -1,0 +1,28 @@
+# Cloud Build configuration: Build & push CareBridge Frontend image to Artifact Registry
+substitutions:
+  _REGION: asia-south1
+  _REPOSITORY: carebridge
+  _IMAGE_NAME: frontend
+  _TAG: latest
+  _NEXT_PUBLIC_API_URL: ""
+  _NEXT_PUBLIC_APP_NAME: "CareBridge"
+
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - infrastructure/docker/Dockerfile.frontend
+      - --build-arg
+      - NEXT_PUBLIC_API_URL=${_NEXT_PUBLIC_API_URL}
+      - --build-arg
+      - NEXT_PUBLIC_APP_NAME=${_NEXT_PUBLIC_APP_NAME}
+      - -t
+      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_IMAGE_NAME}:${_TAG}
+      - .
+
+images:
+  - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_IMAGE_NAME}:${_TAG}
+
+options:
+  logging: CLOUD_LOGGING_ONLY

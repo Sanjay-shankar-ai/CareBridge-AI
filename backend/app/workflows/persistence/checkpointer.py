@@ -31,13 +31,27 @@ def get_workflow_checkpointer(db_uri: Optional[str] = None) -> BaseCheckpointSav
     """
     uri = db_uri or getattr(settings, "CHECKPOINTER_DB_URI", None)
 
+    # Derive standard libpq URI from DATABASE_URL if CHECKPOINTER_DB_URI is unset or default localhost in production
+    db_url = getattr(settings, "DATABASE_URL", "") or ""
+    if (not uri or ("localhost" in uri and "localhost" not in db_url and "127.0.0.1" not in db_url)) and "postgres" in db_url:
+        uri = (
+            db_url.replace("postgresql+asyncpg://", "postgresql://", 1)
+            .replace("postgresql+psycopg://", "postgresql://", 1)
+            .replace("postgres://", "postgresql://", 1)
+        )
+
     if uri and "postgres" in uri:
+        uri = (
+            uri.replace("postgresql+asyncpg://", "postgresql://", 1)
+            .replace("postgresql+psycopg://", "postgresql://", 1)
+            .replace("postgres://", "postgresql://", 1)
+        )
         try:
             from langgraph.checkpoint.postgres import PostgresSaver
             import psycopg
 
             # Probe connection with short timeout to prevent blocking
-            conn = psycopg.connect(uri, autocommit=True, connect_timeout=2)
+            conn = psycopg.connect(uri, autocommit=True, connect_timeout=5)
             saver = PostgresSaver(conn)
             saver.setup()  # Initialize checkpoint tables if they do not exist
             logger.info("Successfully connected PostgreSQL checkpointer.")

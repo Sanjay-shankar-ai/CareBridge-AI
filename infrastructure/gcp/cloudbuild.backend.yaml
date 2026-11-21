@@ -1,0 +1,22 @@
+# Cloud Build configuration: Build & push CareBridge Backend image to Artifact Registry
+substitutions:
+  _REGION: asia-south1
+  _REPOSITORY: carebridge
+  _IMAGE_NAME: backend
+  _TAG: latest
+
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - infrastructure/docker/Dockerfile.backend
+      - -t
+      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_IMAGE_NAME}:${_TAG}
+      - .
+
+images:
+  - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_IMAGE_NAME}:${_TAG}
+
+options:
+  logging: CLOUD_LOGGING_ONLY

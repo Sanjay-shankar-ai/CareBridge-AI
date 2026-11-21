@@ -1,0 +1,56 @@
+# Version control & local IDE/agent metadata
+.git
+.gitignore
+.agent
+.pytest_cache
+backend/.pytest_cache
+__pycache__
+**/__pycache__
+**/*.pyc
+**/*.pyo
+
+# Secrets & local environment files (NEVER bake into container images)
+.env
+.env.*
+backend/.env
+backend/.env.*
+frontend/.env
+frontend/.env.*
+
+# Local SQLite databases & backups
+*.db
+backend/*.db
+backend/backend
+backups
+
+# Node artifacts (installed fresh inside Docker)
+node_modules
+frontend/node_modules
+frontend/.next
+frontend/tsconfig.tsbuildinfo
+
+# Local demo, test, presentation & screenshot assets
+screenshots
+rendered_slides
+test_video_dir
+demo_assets
+template_bgs
+tests
+docs
+*.pptx
+*.pdf
+!backend/uploads/reports/meera_krishnan_mammogram_report.pdf
+*.png
+*.mp4
+baseline_before_p6.txt
+journey_audit_results.json
+*_PROGRESS.md
+*_AUDIT.md
+DEMO_ACCESS.md
+audit_accounts.py
+capture_phase*.py
+check_lifecycle.py
+take_screenshots.py
+test_*.py
+test_pp.ps1
+skills-index.json

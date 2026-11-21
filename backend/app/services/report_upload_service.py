@@ -11,6 +11,7 @@ import uuid
 import base64
 import shutil
 import logging
+from pathlib import Path
 from typing import Dict, Any, Tuple, Optional
 from datetime import datetime, timezone
 import fitz  # PyMuPDF
@@ -105,14 +106,19 @@ class ReportUploadService:
         content: bytes,
         file_type: str,
         safe_filename: str,
-        storage_dir: str = "backend/uploads/reports"
+        storage_dir: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Processes document content through extraction pipeline:
         UPLOADED -> EXTRACTING -> VALIDATING -> READY_TO_FINALIZE or FAILED(reason).
         """
-        os.makedirs(storage_dir, exist_ok=True)
-        file_path = os.path.join(storage_dir, safe_filename)
+        resolved_dir = (
+            storage_dir
+            or os.getenv("UPLOAD_STORAGE_DIR")
+            or str(Path(__file__).resolve().parents[2] / "uploads" / "reports")
+        )
+        os.makedirs(resolved_dir, exist_ok=True)
+        file_path = os.path.join(resolved_dir, safe_filename)
         with open(file_path, "wb") as f:
             f.write(content)
 

@@ -21,9 +21,16 @@ if config.config_file_name is not None:
 
 target_metadata = Base.metadata
 
-# Use configured DATABASE_URL (converted to sync driver for alembic)
+# Use configured DATABASE_URL (converted to sync psycopg driver for alembic)
 db_url_to_use = os.getenv("DATABASE_URL") or settings.DATABASE_URL
-sync_db_url = db_url_to_use.replace("+asyncpg", "").replace("+aiosqlite", "")
+if db_url_to_use.startswith("postgres://"):
+    db_url_to_use = db_url_to_use.replace("postgres://", "postgresql://", 1)
+if db_url_to_use.startswith("postgresql+asyncpg://"):
+    sync_db_url = db_url_to_use.replace("postgresql+asyncpg://", "postgresql+psycopg://", 1)
+elif db_url_to_use.startswith("postgresql://"):
+    sync_db_url = db_url_to_use.replace("postgresql://", "postgresql+psycopg://", 1)
+else:
+    sync_db_url = db_url_to_use.replace("+aiosqlite", "")
 config.set_main_option("sqlalchemy.url", sync_db_url.replace("%", "%%"))
 
 
